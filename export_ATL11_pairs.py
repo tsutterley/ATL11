@@ -17,6 +17,8 @@ COMMAND LINE OPTIONS:
     -F X, --format=X: output data format (ascii, netCDF4, HDF5)
     --bbox=X: Bounding box for spatially subsetting (Xmin,Xmax,Ymin,Ymax)
     --polygon=X: Polygon file (shp, geojson, kml) for subsetting data
+    --filter: Reduce data using ATL06 and ATL11 statistics
+    -V, --verbose: output information for each created file
     -M X, --mode=X: output data file permissions format
 
 PYTHON DEPENDENCIES:
@@ -74,6 +76,7 @@ def usage():
     print(' --bbox=X\t\tBounding box for spatially subsetting')
     print(' --polygon=X\t\tPolygon file for spatially subsetting')
     print('\tshapefile (shp), geojson (json), or Keyhole Markup (kml)')
+    print(' --filter\t\tReduce data using ATL06 and ATL11 statistics')
     print(' -V, --verbose\t\tOutput information for each created file')
     print(' -M X, --mode=X\t\tPermission mode of files created\n')
 
@@ -82,7 +85,7 @@ def main():
     #-- Read the system arguments listed after the program
     long_options = ['help','directory=','output=','release=','track=',
         'granule=','cycle=','projection=','time=','format=','bbox=','polygon=',
-        'verbose','mode=']
+        'filter','verbose','mode=']
     optlist,arglist=getopt.getopt(sys.argv[1:],'hD:O:P:T:F:VM:',long_options)
 
     #-- command line parameters
@@ -102,6 +105,8 @@ def main():
     #-- spatial subsetting parameters
     BBOX = None
     POLYGON = None
+    #-- filter data using ATL06 and ATL11 statistics
+    FILTER = False
     #-- output information about each input and output file
     VERBOSE = False
     #-- permissions mode of the output files (number in octal)
@@ -135,6 +140,8 @@ def main():
             BBOX = np.array(arg.split(','), dtype=np.float)
         elif opt in ("--polygon"):
             POLYGON = os.path.expanduser(arg)
+        elif opt in ("--filter"):
+            FILTER = True
         elif opt in ("-V","--verbose"):
             VERBOSE = True
         elif opt in ("-M","--mode"):
@@ -145,13 +152,14 @@ def main():
     regex = re.compile('({0})_({1})({2})_({3})_(\d{{3}}).h5$'.format(*args))
     #-- run program with parameters
     export_ATL11_pairs(input_dir, output_dir, regex, CYCLES=CYCLES, EPSG=EPSG,
-        TIME=TIME, BBOX=BBOX, POLYGON=POLYGON, FORMAT=FORMAT, VERBOSE=VERBOSE,
-        MODE=MODE)
+        TIME=TIME, BBOX=BBOX, POLYGON=POLYGON, FORMAT=FORMAT, FILTER=FILTER,
+        VERBOSE=VERBOSE, MODE=MODE)
 
 #-- PURPOSE: read ATL11 pairs and output as a combined file
 #-- can spatially subset using a bounding box or a polygon file
 def export_ATL11_pairs(input_dir, output_dir, regex, CYCLES=None, EPSG=None,
-    TIME=None, BBOX=None, POLYGON=None, FORMAT=None, VERBOSE=False, MODE=0o775):
+    TIME=None, BBOX=None, POLYGON=None, FORMAT=None, FILTER=False,
+    VERBOSE=False, MODE=0o775):
     #-- recursively create output directory and set permissions mode
     if not os.access(output_dir, os.F_OK):
         os.makedirs(output_dir, MODE)
@@ -240,6 +248,9 @@ def export_ATL11_pairs(input_dir, output_dir, regex, CYCLES=None, EPSG=None,
                         D11t[p][:,j] = D11.corrected_h.delta_time[int_indices,c-1]
                         #-- set mask for cycle
                         D11m[p] &= np.isfinite(D11h[p][:,j])
+                        if FILTER:
+                            RDE = D11.cycle_stats.h_robust_sprd[int_indices,c-1]
+                            D11m[p] &= (D11e[p][:,j] < 1.0) & (RDE < 1.0)
                         #-- output combined data flag
                         FLAG[i] = cycle_test & int_test & np.any(D11m[p])
             elif cycle_test:
@@ -259,6 +270,10 @@ def export_ATL11_pairs(input_dir, output_dir, regex, CYCLES=None, EPSG=None,
                     D11t[p][:,j] = D11.corrected_h.delta_time[:,c-1]
                     #-- set mask for cycle
                     D11m[p] &= np.isfinite(D11h[p][:,j])
+                    #-- reduce data using ATL06 and ATL11 statistics
+                    if FILTER:
+                        RDE = D11.cycle_stats.h_robust_sprd[:,c-1]
+                        D11m[p] &= (D11e[p][:,j] < 1.0) & (RDE < 1.0)
                     #-- output combined data flag
                     FLAG[i] = cycle_test & np.any(D11m[p])
 
@@ -299,13 +314,13 @@ def output_ATL11_file(D11x, D11y, D11h, D11e, D11t, D11m, FILENAME=None,
         for p in PAIRS:
             #-- output dimensions (including invalids)
             npts,ncycles = np.shape(D11h[p])
-            #-- convert from delta_time into formatted time
-            rpt_times = convert_delta_time(D11t[p])[TIME]
             #-- find valid data
             valid, = np.nonzero(D11m[p])
             for i in valid:
+                #-- convert from delta_time into formatted time
+                rpt_times = convert_delta_time(D11t[p][i,:])[TIME]    
                 #-- merge cycles
-                times = ','.join('{0:0.6f}'.format(t) for t in rpt_times[i,:])
+                times = ','.join('{0:0.6f}'.format(t) for t in rpt_times)
                 heights = ','.join('{0:0.6f}'.format(h) for h in D11h[p][i,:])
                 errors = ','.join('{0:0.6f}'.format(h) for h in D11e[p][i,:])
                 #-- print to file
