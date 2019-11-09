@@ -27,8 +27,9 @@ class defaults:
         self.xy_scale=100.         # meters
         self.t_scale=86400*365.25  # seconds/year.
         self.max_fit_iterations = 20  # maximum iterations when computing the reference surface models
-        self.equatorial_radius=6378137 # meters, on WGS84 spheroid
-        self.polar_radius=6356752.3 # derived, https://www.eoas.ubc.ca/~mjelline/Planetary%20class/14gravity1_2.pdf
+        self.equatorial_radius=6378137 # meters, on WGS84 ellipsoid
+        self.ellipsoid_flattening=1.0/298.257223563 # flattening of the WGS84 ellipsoid
+        self.polar_radius=(1.0-self.ellipsoid_flattening)*self.equatorial_radius # derived semiminor axis of the WGS84 eellipsoid
         self.ATL06_field_dict=default_ATL06_fields()
         self.seg_number_skip=self.N_search
         # calculate the order for the polynomial degrees:  Sorted by degree, then by y degree, no sum of x and y degrees larger than max(degree_x, degree_y)
@@ -46,7 +47,7 @@ class defaults:
         self.N_coeffs=len(self.poly_exponent_list)
         self.hemisphere=None
         self.ATL06_xover_field_list=['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id', 'x_atc', 'dh_fit_dx', 'rgt','cycle_number', 'BP', 'LR', 'spot','sigma_geo_xt','sigma_geo_at']
-        
+
 
 def default_ATL06_fields():
     field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id','sigma_geo_h'],
@@ -56,4 +57,3 @@ def default_ATL06_fields():
                     'orbit_info':['rgt','cycle_number'],
                     'derived':['valid','BP', 'LR', 'spot', 'n_pixels', 'min_along_track_dh']}
     return field_dict
-

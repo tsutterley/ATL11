@@ -24,8 +24,8 @@ class data(object):
 
         # define empty records here based on ATL11 ATBD
         # read in parameters information in .csv
-        ATL11_root=os.path.dirname(inspect.getfile(ATL11.defaults))
-        with open(ATL11_root+'/ATL11_output_attrs.csv','r') as attrfile:
+        ATL11_root = os.path.dirname(inspect.getfile(ATL11.defaults))
+        with open(os.path.join(ATL11_root,'ATL11_output_attrs.csv'),'r') as attrfile:
             reader=list(csv.DictReader(attrfile))
         group_names = set([row['group'] for row in reader])
         for group in group_names:
@@ -47,7 +47,7 @@ class data(object):
     def assign(self, var_dict):
         for key in var_dict:
             setattr(self, key, var_dict[key])
-        
+
     def index(self, ind, N_cycles=None, N_coeffs=None, target=None):
         """
         return a copy of the data for points 'ind'
@@ -125,7 +125,7 @@ class data(object):
                     try:
                         setattr(getattr(self, group), field, np.concatenate(temp_out).ravel())
                     except ValueError:
-                        print("Problem writing %s" %field)
+                        print("Problem writing {0}".format(field))
 
         self.slope_change_t0=P11_list[0].slope_change_t0
         return self
@@ -136,7 +136,7 @@ class data(object):
         '''
         self.filename=filename
         #index_range=slice(index_range[0], index_range[1]);
-        pt='pt%d' % pair
+        pt = 'pt{0:d}'.format(pair)
         with h5py.File(filename,'r') as FH:
             if pt not in FH:
                 return self
@@ -161,7 +161,7 @@ class data(object):
                             else:
                                 setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
                         except KeyError:
-                            print("ATL11 file %s: missing %s/%s" % (filename, group, field))
+                            print("ATL11 file {0}: missing {1}{2}".format(filename, group, field))
                 else:
                     # get the indices for the crossing_track_data group:
                     if self.corrected_h.ref_pt.size <1:
@@ -174,9 +174,9 @@ class data(object):
                             setattr(getattr(self, group), field, \
                                     np.array(FH[pt]['crossing_track_data'][field][xing_ind]))
                         except KeyError:
-                            print("ATL11 file %s: missing %s/%s" % (filename, 'crossing_track_data', field))
+                            print("ATL11 file {0}: missing {1}{2}".format(filename, 'crossing_track_data', field))
                         except ValueError:
-                            print("ATL11 file %s: misshapen %s/%s" % (filename, 'crossing_track_data', field))
+                            print("ATL11 file {0}: misshapen {1}{2}".format(filename, 'crossing_track_data', field))
                             #setattr(getattr(self, group), field, \
                             #        np.array(FH[pt]['crossing_track_data'][field][xing_ind]))
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_y'])}
@@ -216,7 +216,7 @@ class data(object):
         #   fileout: filename of hdf5 filename to write
         # Optional input:
         #   parms_11: ATL11.defaults structure
-        group_name='/pt%d' % self.pair_num
+        group_name = '/pt{0:d}'.format(self.pair_num)
         if os.path.isfile(fileout):
             f = h5py.File(fileout,'r+')
             if group_name in f:
@@ -237,12 +237,13 @@ class data(object):
             try:
                 g.attrs[param]=getattr(params_11, param)
             except:
-                #print("write_to_file:could not automatically set parameter: %s" % param)
+                #print("write_to_file:could not automatically set parameter: {0}".format(param))
                 continue
 
         # put groups, fields and associated attributes from .csv file
-        with open(os.path.dirname(inspect.getfile(ATL11.data))+'/ATL11_output_attrs.csv','r') as attrfile:
-            reader=list(csv.DictReader(attrfile))
+        ATL11_directory = os.path.dirname(inspect.getfile(ATL11.data))
+        with open(os.path.join(ATL11_directory,'ATL11_output_attrs.csv'),'r') as attrfile:
+            reader = list(csv.DictReader(attrfile))
         group_names=set([row['group'] for row in reader])
         attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']
         field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader}
@@ -387,7 +388,7 @@ class data(object):
             D6_sub=D6.subset(np.any(np.abs(D6.segment_id-ref_pt) <= params_11.N_search, axis=1), by_row=True)
             if D6_sub.h_li.shape[0]<=1:
                 if verbose:
-                    print("not enough data at ref pt=%d" % ref_pt)
+                    print("not enough data at ref pt={0:d}".format(ref_pt))
                 continue
 
             #2a. define representative x and y values for the pairs
@@ -402,31 +403,31 @@ class data(object):
                 P11.select_ATL06_pairs(D6_sub, pair_data)
             except np.linalg.LinAlgError:
                 if verbose:
-                    print("LinAlg error in select_ATL06_pairs ref pt=%d" % ref_pt)
+                    print("LinAlg error in select_ATL06_pairs ref pt={0:d}".format(ref_pt))
             #if P11.ref_surf.complex_surface_flag:
             #    P11.select_ATL06_pairs(D6_sub, pair_data, complex_surface_flag=True)
-                    
+
             if P11.ref_surf.quality_summary > 0:
                 #P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
+                    print("surf_fit_quality={0:d} at ref pt={1:d}".format(P11.ref_surf.quality_summary, ref_pt))
                 continue
-            
+
             if np.sum(P11.valid_pairs.all) < 2:
                 continue
-                       
+
             # select the y coordinate for the fit (in ATC coords)
             P11.select_y_center(D6_sub, pair_data)
-            
-            if np.sum(P11.valid_pairs.all) < 2:  
+
+            if np.sum(P11.valid_pairs.all) < 2:
                 continue
-            
+
             if P11.ref_surf.quality_summary > 0:
                 #P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
+                    print("surf_fit_quality={0:d} at ref pt={1:d}".format(P11.ref_surf.quality_summary, ref_pt))
                 continue
-            
+
             # regress the geographic coordinates from the data to the fit center
             P11.corrected_h.latitude, P11.corrected_h.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
 
@@ -436,9 +437,9 @@ class data(object):
             if 'inversion failed' in P11.status:
                 #P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
+                    print("surf_fit_quality={0:d} at ref pt={1:d}".format(P11.ref_surf.quality_summary, ref_pt))
                 continue
-                        
+
             # correct the heights from other cycles to the reference point using the reference surface
             P11.corr_heights_other_cycles(D6_sub)
 
@@ -463,7 +464,7 @@ class data(object):
                 continue
             P11_list.append(P11)
             if count-last_count>500:
-                print("completed %d segments, ref_pt= %d" %(count, ref_pt))
+                print("completed {0:d} segments, ref_pt= {1:d}".format(count, ref_pt))
                 last_count=count
 
         if len(P11_list) > 0:
@@ -505,7 +506,7 @@ def regress_to(D, out_field_names, in_field_names, in_field_pt, DEBUG=None):
 
     if np.sum(good_rows) < 2:
         return np.zeros(len(out_field_names))+np.NaN
-    
+
     # build the regression matrix
     G=np.ones((np.sum(good_rows),len(in_field_names)+1) )
     for k in range(len(in_field_names)):

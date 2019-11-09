@@ -11,7 +11,7 @@ from ATL11.RDE import RDE
 
 def my_lstsq(A, b):
     return np.linalg.solve(A.T.dot(A), A.T.dot(b))
-    
+
 
 class poly_ref_surf(object):
     def __init__(self, degree_xy=None, exp_xy=None, xy0=[0,0], skip_constant=False, xy_scale=1.0):
@@ -37,20 +37,20 @@ class poly_ref_surf(object):
         self.model_cov_matrix=None
         self.xy_scale=xy_scale
         self.skip_constant=skip_constant
-        
+
     def fit_matrix(self, x, y):
         G=np.zeros([x.size, self.exp_x.size])  # size is the ravel of shape, here G is len(x) * 3
         for col, ee in enumerate(zip(self.exp_x, self.exp_y)):
             G[:,col]=((x.ravel()-self.x0)/self.xy_scale)**ee[0] * ((y.ravel()-self.y0)/self.xy_scale)**ee[1]
         return G
-    
+
     def z(self, x0, y0):
         # evaluate the poltnomial at [x0, y0]
         G=self.fit_matrix(x0, y0)
         z=np.dot(G, self.poly_vals)
         z.shape=x0.shape
         return z
-    
+
     def fit(self, xd, yd, zd, sigma_d=None, max_iterations=1, min_sigma=0):
 
         # asign poly_vals and cov_matrix with a linear fit to zd at points xd, yd
@@ -67,7 +67,7 @@ class poly_ref_surf(object):
         mask=np.ones_like(zd.ravel(), dtype=bool)
         sigma_inv=1./sigma_d.ravel()
         sigma_inv.shape=[len(sigma_inv), 1]
-        
+
         for k_it in np.arange(max_iterations):
             rows=mask
             if rows.sum()==0:
@@ -102,7 +102,7 @@ class poly_ref_surf(object):
             #print('sigma from RDE ',sigma)
             threshold=3.*np.max([sigma, min_sigma])
             mask=np.abs(rs)<threshold
-            #print("\tsigma=%3.2f, f=%d/%d" % (sigma, np.sum(mask), len(mask)))
+            #print("\tsigma={0:3.2f}, f={1:d}/{2:d}".format(sigma, np.sum(mask), len(mask)))
         self.poly_vals=m
 
         return m, residual, chi2r, rows
