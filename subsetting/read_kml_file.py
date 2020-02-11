@@ -33,7 +33,7 @@ PYTHON DEPENDENCIES:
 UPDATE HISTORY:
 	Updated 09/2019: made output coordinate system an option (EPSG)
 	Updated 07/2019: added option to reduce to specific VARIABLES within file
-	Updated 06/2019: convert projection to EPGS:4326 before creating polygons
+	Updated 06/2019: convert projection to EPSG:4326 before creating polygons
 		only read LineString and Polygon features from the kml/kmz file
 	Written 06/2019
 """

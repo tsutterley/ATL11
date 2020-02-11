@@ -6,6 +6,7 @@ setup(
 	url='https://github.com/suzanne64/ATL11',
 	author='Ben Smith',
 	author_email='besmith@uw.edu',
+	license='MIT',
 	classifiers=[
 		'Development Status :: 3 - Alpha',
 		'Intended Audience :: Science/Research',
